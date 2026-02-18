@@ -150,21 +150,23 @@ public class UnitSelection : MonoBehaviour
         if (Mouse.current.rightButton.wasPressedThisFrame && selectedUnits.Count > 0)
         {
             Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
-            if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, groundLayer))
+            int layerMask = groundLayer;
+            
+            if (Physics.Raycast(ray, out RaycastHit debugHit, Mathf.Infinity))
+            {
+                Debug.Log("Hit: " + debugHit.collider.gameObject.name + " on layer: " + LayerMask.LayerToName(debugHit.collider.gameObject.layer));
+            }
+            
+            if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
             {
                 Vector3 target = hit.point;
+                Debug.Log("Clicked");
 
                 for (int i = 0; i < selectedUnits.Count; i++)
                 {
                     // simple offset so units don't all stack
                     Vector3 offset = GetFormationOffset(i, selectedUnits.Count);
-                    Vector3 destination = target + offset;
-
-                    // if using NavMesh:
-                    // unit.GetComponent<NavMeshAgent>().SetDestination(destination);
-
-                    // placeholder - you'd replace with your movement system
-                    selectedUnits[i].transform.position = destination;
+                    selectedUnits[i].MoveTo(target + offset);
                 }
             }
         }
