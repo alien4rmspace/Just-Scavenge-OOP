@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine.InputSystem;
 
 public class UnitSelection : MonoBehaviour
@@ -8,15 +9,24 @@ public class UnitSelection : MonoBehaviour
     public LayerMask unitLayer;
     public LayerMask groundLayer;
 
-    private Vector2 startScreenPos;
-    private bool isDragging;
-    private float dragThreshold = 10f;
+    private Vector2 _startScreenPos;
+    private bool _isDragging;
+    private float _dragThreshold = 10f;
     
-    private List<Unit> selectedUnits = new List<Unit>();
-    private Camera cam;
+    private List<PlayerUnit> _selectedUnits = new List<PlayerUnit>();
+    private Camera _cam;
+    void OnEnable()
+    {
+        Unit.OnUnitDied += HandleUnitDied;
+    }
+
+    void OnDisable()
+    {
+        Unit.OnUnitDied -= HandleUnitDied;
+    }
     void Start()
     {
-        cam = Camera.main;
+        _cam = Camera.main;
         selectionBox.gameObject.SetActive(false);
     }
 
@@ -31,42 +41,42 @@ public class UnitSelection : MonoBehaviour
     {
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
-            startScreenPos = Mouse.current.position.ReadValue();
-            isDragging = false;
+            _startScreenPos = Mouse.current.position.ReadValue();
+            _isDragging = false;
         }
 
         if (Mouse.current.leftButton.isPressed)
         {
-            if (!isDragging &&
-                Vector2.Distance(startScreenPos, Mouse.current.position.ReadValue()) > dragThreshold)
+            if (!_isDragging &&
+                Vector2.Distance(_startScreenPos, Mouse.current.position.ReadValue()) > _dragThreshold)
             {
-                isDragging = true;
+                _isDragging = true;
                 selectionBox.gameObject.SetActive(true);
             }
 
-            if (isDragging)
+            if (_isDragging)
                 UpdateSelectionBox();
         }
 
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
-            if (isDragging)
+            if (_isDragging)
                 SelectUnitsInBox();
             else
                 ClickSelect();
 
             selectionBox.gameObject.SetActive(false);
-            isDragging = false;
+            _isDragging = false;
         }
     }
     
     void ClickSelect()
     {
-        Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+        Ray ray = _cam.ScreenPointToRay(Mouse.current.position.ReadValue());
 
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, unitLayer))
         {
-            Unit unit = hit.collider.GetComponent<Unit>();
+            PlayerUnit unit = hit.collider.GetComponent<PlayerUnit>();
             if (unit != null)
             {
                 if (!Keyboard.current.leftShiftKey.isPressed)
@@ -75,12 +85,12 @@ public class UnitSelection : MonoBehaviour
                 if (unit.isSelected)
                 {
                     unit.SetSelected(false);
-                    selectedUnits.Remove(unit);
+                    _selectedUnits.Remove(unit);
                 }
                 else
                 {
                     unit.SetSelected(true);
-                    selectedUnits.Add(unit);
+                    _selectedUnits.Add(unit);
                 }
                 return;
             }
@@ -95,8 +105,8 @@ public class UnitSelection : MonoBehaviour
     void UpdateSelectionBox()
     {
         Vector2 currentPos = Mouse.current.position.ReadValue();
-        Vector2 min = Vector2.Min(startScreenPos, currentPos);
-        Vector2 max = Vector2.Max(startScreenPos, currentPos);
+        Vector2 min = Vector2.Min(_startScreenPos, currentPos);
+        Vector2 max = Vector2.Max(_startScreenPos, currentPos);
 
         selectionBox.anchoredPosition = min;
         selectionBox.sizeDelta = max - min;
@@ -107,16 +117,15 @@ public class UnitSelection : MonoBehaviour
         if (!Keyboard.current.leftShiftKey.isPressed)
             DeselectAll();
 
-        Vector2 min = Vector2.Min(startScreenPos, (Vector2)Mouse.current.position.ReadValue());
-        Vector2 max = Vector2.Max(startScreenPos, (Vector2)Mouse.current.position.ReadValue());
+        Vector2 min = Vector2.Min(_startScreenPos, Mouse.current.position.ReadValue());
+        Vector2 max = Vector2.Max(_startScreenPos, Mouse.current.position.ReadValue());
         Rect selectionRect = new Rect(min, max - min);
 
-        Unit[] allUnits = FindObjectsOfType<Unit>();
-        foreach (Unit unit in allUnits)
+        foreach (PlayerUnit unit in Unit.playerUnits.OfType<PlayerUnit>())
         {
             // check two points: feet and head
-            Vector2 feet = cam.WorldToScreenPoint(unit.transform.position);
-            Vector2 head = cam.WorldToScreenPoint(unit.transform.position + Vector3.up * 2f);
+            Vector2 feet = _cam.WorldToScreenPoint(unit.transform.position);
+            Vector2 head = _cam.WorldToScreenPoint(unit.transform.position + Vector3.up * 2f);
 
             // build a small screen rect for the unit
             Vector2 unitMin = Vector2.Min(feet, head);
@@ -130,43 +139,37 @@ public class UnitSelection : MonoBehaviour
             if (selectionRect.Overlaps(unitRect))
             {
                 unit.SetSelected(true);
-                if (!selectedUnits.Contains(unit))
-                    selectedUnits.Add(unit);
+                if (!_selectedUnits.Contains(unit))
+                    _selectedUnits.Add(unit);
             }
         }
     }
 
     void DeselectAll()
     {
-        foreach (Unit unit in selectedUnits)
+        foreach (PlayerUnit unit in _selectedUnits)
             unit.SetSelected(false);
-        selectedUnits.Clear();
+        _selectedUnits.Clear();
     }
 
     // ─── MOVEMENT ────────────────────────────────
 
     void HandleMovement()
     {
-        if (Mouse.current.rightButton.wasPressedThisFrame && selectedUnits.Count > 0)
+        if (Mouse.current.rightButton.wasPressedThisFrame && _selectedUnits.Count > 0)
         {
-            Ray ray = cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+            Ray ray = _cam.ScreenPointToRay(Mouse.current.position.ReadValue());
             int layerMask = groundLayer;
-            
-            if (Physics.Raycast(ray, out RaycastHit debugHit, Mathf.Infinity))
-            {
-                Debug.Log("Hit: " + debugHit.collider.gameObject.name + " on layer: " + LayerMask.LayerToName(debugHit.collider.gameObject.layer));
-            }
             
             if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
             {
                 Vector3 target = hit.point;
-                Debug.Log("Clicked");
 
-                for (int i = 0; i < selectedUnits.Count; i++)
+                for (int i = 0; i < _selectedUnits.Count; i++)
                 {
                     // simple offset so units don't all stack
-                    Vector3 offset = GetFormationOffset(i, selectedUnits.Count);
-                    selectedUnits[i].MoveTo(target + offset);
+                    Vector3 offset = GetFormationOffset(i, _selectedUnits.Count);
+                    _selectedUnits[i].MoveTo(target + offset);
                 }
             }
         }
@@ -185,5 +188,13 @@ public class UnitSelection : MonoBehaviour
         float zOffset = (row - columns / 2f) * spacing;
 
         return new Vector3(xOffset, 0, zOffset);
+    }
+    void HandleUnitDied(Unit unit)
+    {
+        PlayerUnit playerUnit = unit as PlayerUnit; // Safe cast as PlayerUnit
+        if (playerUnit != null && _selectedUnits.Contains(playerUnit))
+        {
+            _selectedUnits.Remove(playerUnit);
+        }
     }
 }

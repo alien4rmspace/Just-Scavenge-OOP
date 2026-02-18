@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -8,29 +10,63 @@ public class Unit : MonoBehaviour
         Player,
         Zombie
     }
+    public static event Action<Unit> OnUnitDied;
 
     public Team team;
-    public bool isSelected;
-    public GameObject selectionIndicator;
-    private NavMeshAgent agent;
+    public float baseSpeed = 3.0f;
+    public float baseMaxHealth = 100.0f;
+    public float currentHealth;
+    
+    protected NavMeshAgent agent;
+    protected Animator animator;
 
-    void Awake()
+    public static List<Unit> playerUnits = new List<Unit>();
+    public static List<Unit> zombieUnits = new List<Unit>();
+
+    protected virtual void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
+        animator = GetComponent<Animator>();
+        agent.speed = baseSpeed;
+        currentHealth = baseMaxHealth;
     }
 
-    public void SetSelected(bool selected)
+    protected virtual void OnEnable()
     {
-        isSelected = selected;
-
-        if (selectionIndicator != null)
+        if (team == Team.Zombie)
         {
-            selectionIndicator.SetActive(selected);
+            zombieUnits.Add(this);
+        } else if (team == Team.Player)
+        {
+            playerUnits.Add(this);
         }
     }
 
-    public void MoveTo(Vector3 destination)
+    protected void OnDisable()
     {
-        agent.SetDestination(destination);
+        playerUnits.Remove(this);
+        zombieUnits.Remove(this);
     }
+
+    protected virtual void Update()
+    {
+        float speed = agent.velocity.magnitude;
+        animator.SetFloat("Speed", speed);
+    }
+
+    public virtual void TakeDamage(float damage)
+    {
+        currentHealth -= damage;
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+
+    protected virtual void Die()
+    {
+        OnUnitDied?.Invoke(this);
+        Destroy(gameObject);
+    }
+
 }
