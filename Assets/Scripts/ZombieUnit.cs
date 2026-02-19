@@ -8,7 +8,7 @@ public class ZombieUnit : Unit
     public float attackDamage = 10f;
     public float attackCooldown = 2f;
     public float wanderRadius = 10f;
-    public float wanderTimer = 3f;
+    public float wanderTimer = 7f;
 
     private float _timer;
     private float _attackTimer;
@@ -17,7 +17,7 @@ public class ZombieUnit : Unit
     private float _attackAngle;
 
     private LayerMask _playerLayerMask;
-    private readonly Collider[] _detectionResults = new Collider[20];
+    private readonly Collider[] _detectionResults = new Collider[50];
 
     protected override void Awake()
     {
@@ -96,7 +96,7 @@ public class ZombieUnit : Unit
     {
         if (_timer >= wanderTimer)
         {
-            float chanceThreshold = 0.1f;
+            float chanceThreshold = 0.5f;
             if (Random.value < chanceThreshold)
             {
                 Vector2 randomCircle = Random.insideUnitCircle * wanderRadius;
