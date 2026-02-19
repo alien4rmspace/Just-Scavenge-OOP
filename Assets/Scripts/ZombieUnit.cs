@@ -14,6 +14,7 @@ public class ZombieUnit : Unit
     private float _attackTimer;
     private float _updateInterval = 0.25f;
     private float _updateTimer;
+    private float _attackAngle;
 
     protected override void Awake()
     {
@@ -22,6 +23,9 @@ public class ZombieUnit : Unit
         agent.obstacleAvoidanceType = ObstacleAvoidanceType.LowQualityObstacleAvoidance;
         agent.stoppingDistance = attackRange * 0.8f;
         _updateTimer = Random.Range(0f, _updateInterval);
+        
+        float hash = GetInstanceID() * 0.618f;
+        _attackAngle = hash % (2f * Mathf.PI);
     }
     
     protected override void Update()
@@ -56,9 +60,8 @@ public class ZombieUnit : Unit
             }
             else
             {
-                float angle = GetAttackAngle();
                 float radius = attackRange * 0.8f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
+                Vector3 offset = new Vector3(Mathf.Cos(_attackAngle) * radius, 0, Mathf.Sin(_attackAngle) * radius);
                 agent.SetDestination(target.position + offset);
             }
         }
@@ -82,13 +85,6 @@ public class ZombieUnit : Unit
         return closest;
     }
     
-    float GetAttackAngle()
-    {
-        // use this zombie's instance ID to get a unique but consistent angle
-        float hash = GetInstanceID() * 0.618f; // golden ratio for nice distribution
-        return hash % (2f * Mathf.PI);
-    }
-
     private void Wander()
     {
         if (_timer >= wanderTimer)
