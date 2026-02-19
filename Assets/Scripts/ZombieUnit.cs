@@ -3,6 +3,8 @@ using UnityEngine.AI;
 
 public class ZombieUnit : Unit
 {
+    [SerializeField] private LayerMask playerLayerMask;
+
     public float detectionRange = 15f;
     public float attackRange = 1.5f;
     public float attackDamage = 10f;
@@ -15,6 +17,8 @@ public class ZombieUnit : Unit
     private float _updateInterval = 0.25f;
     private float _updateTimer;
     private float _attackAngle;
+    
+    private readonly Collider[] _detectionResults = new Collider[20];
 
     protected override void Awake()
     {
@@ -69,16 +73,18 @@ public class ZombieUnit : Unit
 
     private Transform FindClosestPlayer()
     {
+        int count = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _detectionResults, playerLayerMask);
+
         float closestDistance = Mathf.Infinity;
         Transform closest = null;
 
-        foreach (Unit unit in playerUnits)
+        for (int i = 0; i < count; i++)
         {
-            float dist = Vector3.Distance(transform.position, unit.transform.position);
-            if (dist < closestDistance && dist < detectionRange)
+            float dist = (transform.position - _detectionResults[i].transform.position).sqrMagnitude;
+            if (dist < closestDistance)
             {
                 closestDistance = dist;
-                closest = unit.transform;
+                closest = _detectionResults[i].transform;
             }
         }
 
