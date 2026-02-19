@@ -3,8 +3,6 @@ using UnityEngine.AI;
 
 public class ZombieUnit : Unit
 {
-    [SerializeField] private LayerMask playerLayerMask;
-
     public float detectionRange = 15f;
     public float attackRange = 1.5f;
     public float attackDamage = 10f;
@@ -17,7 +15,8 @@ public class ZombieUnit : Unit
     private float _updateInterval = 0.25f;
     private float _updateTimer;
     private float _attackAngle;
-    
+
+    private LayerMask _playerLayerMask;
     private readonly Collider[] _detectionResults = new Collider[20];
 
     protected override void Awake()
@@ -30,6 +29,8 @@ public class ZombieUnit : Unit
         
         float hash = GetInstanceID() * 0.618f;
         _attackAngle = hash % (2f * Mathf.PI);
+
+        _playerLayerMask = LayerMask.GetMask("Player");
     }
     
     protected override void Update()
@@ -73,7 +74,7 @@ public class ZombieUnit : Unit
 
     private Transform FindClosestPlayer()
     {
-        int count = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _detectionResults, playerLayerMask);
+        int count = Physics.OverlapSphereNonAlloc(transform.position, detectionRange, _detectionResults, _playerLayerMask);
 
         float closestDistance = Mathf.Infinity;
         Transform closest = null;
@@ -95,16 +96,20 @@ public class ZombieUnit : Unit
     {
         if (_timer >= wanderTimer)
         {
-            Vector3 randomPoint = transform.position + Random.insideUnitSphere * wanderRadius;
-            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, wanderRadius, NavMesh.AllAreas))
-                agent.SetDestination(hit.position);
+            float chanceThreshold = 0.1f;
+            if (Random.value < chanceThreshold)
+            {
+                Vector2 randomCircle = Random.insideUnitCircle * wanderRadius;
+                Vector3 randomPoint = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
+                if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+                    agent.SetDestination(hit.position);
+            }
             _timer = 0;
         }
     }
 
     private void Attack(Transform target)
     {
-        _attackTimer += Time.deltaTime;
         if (_attackTimer >= attackCooldown)
         {
             Unit targetUnit = target.GetComponent<Unit>();

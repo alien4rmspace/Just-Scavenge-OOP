@@ -279,6 +279,9 @@ MonoBehaviour:
   baseSpeed: 3
   baseMaxHealth: 100
   currentHealth: 0
+  playerLayerMask:
+    serializedVersion: 2
+    m_Bits: 8
   detectionRange: 15
   attackRange: 1.5
   attackDamage: 10
