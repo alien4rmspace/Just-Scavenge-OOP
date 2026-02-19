@@ -4,23 +4,15 @@ using UnityEngine.AI;
 public class ZombieUnit : Unit
 {
     public float detectionRange = 15f;
-
     public float attackRange = 1.5f;
-
     public float attackDamage = 10f;
-
     public float attackCooldown = 2f;
-
     public float wanderRadius = 10f;
-
     public float wanderTimer = 3f;
 
     private float _timer;
-
     private float _attackTimer;
-
     private float _updateInterval = 0.25f;
-
     private float _updateTimer;
 
     protected override void Awake()
@@ -36,6 +28,7 @@ public class ZombieUnit : Unit
     {
         base.Update();
 
+        _timer += Time.deltaTime;
         _updateTimer += Time.deltaTime;
         _attackTimer += Time.deltaTime;
         if (_updateTimer < _updateInterval)
@@ -79,7 +72,7 @@ public class ZombieUnit : Unit
         foreach (Unit unit in playerUnits)
         {
             float dist = Vector3.Distance(transform.position, unit.transform.position);
-            if (dist < closestDistance)
+            if (dist < closestDistance && dist < detectionRange)
             {
                 closestDistance = dist;
                 closest = unit.transform;
@@ -98,7 +91,6 @@ public class ZombieUnit : Unit
 
     private void Wander()
     {
-        _timer += Time.deltaTime;
         if (_timer >= wanderTimer)
         {
             Vector3 randomPoint = transform.position + Random.insideUnitSphere * wanderRadius;
